@@ -1,0 +1,145 @@
+﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:project"
+             x:Class="project.MainPage"
+             Title="Analýza dat"
+             BackgroundColor="White">
+
+    <!-- Definice konvertorů pro dynamickou změnu velikosti a textu tlačítek -->
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <converters:BoolToSizeConverter x:Key="BoolToSizeConverter"/>
+            <converters:BoolToTextConverter x:Key="BoolToTextConverter"/>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto, *"
+          ColumnDefinitions="300, *"
+          RowSpacing="10"
+          ColumnSpacing="20"
+          Padding="10">
+
+        <!-- HORNÍ LIŠTA S OVLÁDACÍMI PRVKY -->
+        <Grid Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="Auto, Auto, *, Auto, Auto" ColumnSpacing="10">
+
+            <!-- Tlačítko pro načtení souboru -->
+            <Button Text="Načíst soubor" FontSize="18"
+                    BackgroundColor="DodgerBlue"
+                    TextColor="White"
+                    Grid.Column="0"
+                    Clicked="OnLoadFileClicked"/>
+
+            <!-- Vyhledávání podle teploty -->
+            <SearchBar x:Name="TemperatureSearchBar"
+                       Placeholder="Teplota [°C]"
+                       Grid.Column="1"
+                       HorizontalOptions="StartAndExpand"
+                       TextColor="Black"
+                       PlaceholderColor="Gray"
+                       SearchButtonPressed="OnTemperatureSearch"
+                       TextChanged="OnTemperatureTextChanged"
+                       IsEnabled="{Binding IsTemperatureEnabled}"/>
+
+            <!-- Vyhledávání podle frekvence -->
+            <SearchBar x:Name="FrequencySearchBar"
+                       Placeholder="Frekvence [Hz]"
+                       Grid.Column="2"
+                       HorizontalOptions="StartAndExpand"
+                       TextColor="Black"
+                       PlaceholderColor="Gray"
+                       SearchButtonPressed="OnFrequencySearch"
+                       TextChanged="OnFrequencyTextChanged"
+                       IsEnabled="{Binding IsFrequencyEnabled}"/>
+
+            <!-- Volné místo mezi vyhledáváním a tlačítkem "Help" -->
+            <BoxView Grid.Column="3"/>
+
+            <!-- Tlačítko "Help" zobrazující návod k aplikaci -->
+            <Button Text="Help" FontSize="18"
+                    BackgroundColor="DarkOrange"
+                    TextColor="White"
+                    Grid.Column="4"
+                    HorizontalOptions="End"
+                    Clicked="OnHelpClicked"/>
+        </Grid>
+
+        <!-- LEVÝ PANEL: ZOBRAZENÍ DAT A NÁHLEDU SOUBORU -->
+        <Grid Grid.Row="1" Grid.Column="0"
+              RowDefinitions="*,*"
+              WidthRequest="300"
+              Padding="5"
+              BackgroundColor="Gainsboro"
+              VerticalOptions="FillAndExpand"
+              HorizontalOptions="Start">
+
+            <!-- Seznam načtených dat -->
+            <VerticalStackLayout Grid.Row="0" BackgroundColor="White" Padding="10">
+                <Label Text="Data pro zobrazení" FontSize="16" FontAttributes="Bold" TextColor="Black"/>
+                <ListView x:Name="DataListView" ItemsSource="{Binding DataItems}"
+                          BackgroundColor="White"/>
+            </VerticalStackLayout>
+
+            <!-- Náhled souboru -->
+            <VerticalStackLayout Grid.Row="1" BackgroundColor="LightSkyBlue" Padding="10">
+                <Label Text="Náhled souboru" FontSize="16" FontAttributes="Bold" TextColor="Black"/>
+                <Label x:Name="FilePreviewLabel" Text="Žádný soubor nenahrán" FontSize="14" TextColor="Black"/>
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- PRAVÁ HLAVNÍ OBLAST: SEZNAM GRAFŮ -->
+        <ScrollView Grid.Row="1" Grid.Column="1" VerticalOptions="FillAndExpand"
+                    HorizontalOptions="FillAndExpand" BackgroundColor="White">
+            <VerticalStackLayout Spacing="20" HorizontalOptions="FillAndExpand">
+
+                <!-- Kolekce grafů -->
+                <CollectionView x:Name="GraphsCollectionView" ItemsSource="{Binding Graphs}">
+                    <CollectionView.ItemsLayout>
+                        <GridItemsLayout Orientation="Vertical" Span="2"/>
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border BackgroundColor="LightGray" Padding="10"
+                                    HorizontalOptions="FillAndExpand"
+                                    VerticalOptions="FillAndExpand"
+                                    HeightRequest="{Binding IsExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter=height}"
+                                    WidthRequest="{Binding IsExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter=width}">
+                                <VerticalStackLayout>
+                                    <Grid ColumnDefinitions="*, Auto, Auto">
+                                        <!-- Název grafu -->
+                                        <Label Text="{Binding Name}" FontSize="18" FontAttributes="Bold" TextColor="Black" Grid.Column="0"/>
+                                        <!-- Tlačítko pro export grafu -->
+                                        <Button Text="Export" Clicked="OnExportGraphClicked"
+                                                BackgroundColor="Gray" TextColor="White"
+                                                HorizontalOptions="End" Grid.Column="1"/>
+                                        <!-- Tlačítko pro zvětšení/zmenšení grafu -->
+                                        <Button Text="{Binding IsExpanded, Converter={StaticResource BoolToTextConverter}}"
+                                                Clicked="OnResizeGraphClicked"
+                                                BackgroundColor="DarkGray" TextColor="White"
+                                                HorizontalOptions="End" Grid.Column="2"/>
+                                    </Grid>
+                                    <!-- Místo pro vykreslení grafu -->
+                                    <BoxView BackgroundColor="White"
+                                             HeightRequest="500"
+                                             HorizontalOptions="FillAndExpand"
+                                             VerticalOptions="FillAndExpand"/>
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- TLAČÍTKO PRO PŘIDÁNÍ NOVÉHO GRAFU -->
+                <Button Text="+" FontSize="24"
+                        WidthRequest="50" HeightRequest="50"
+                        CornerRadius="25"
+                        BackgroundColor="DodgerBlue"
+                        TextColor="White"
+                        HorizontalOptions="Center"
+                        VerticalOptions="End"
+                        Margin="0,0,0,50"
+                        Clicked="OnAddGraphClicked"/>
+            </VerticalStackLayout>
+        </ScrollView>
+
+    </Grid>
+</ContentPage>
