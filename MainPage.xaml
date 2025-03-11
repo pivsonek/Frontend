@@ -5,7 +5,6 @@
              Title="Analýza dat"
              BackgroundColor="White">
 
-    <!-- Definice konvertorů pro dynamickou změnu velikosti a textu tlačítek -->
     <ContentPage.Resources>
         <ResourceDictionary>
             <converters:BoolToSizeConverter x:Key="BoolToSizeConverter"/>
@@ -19,17 +18,13 @@
           ColumnSpacing="20"
           Padding="10">
 
-        <!-- HORNÍ LIŠTA S OVLÁDACÍMI PRVKY -->
+        <!-- HORNÍ LIŠTA -->
         <Grid Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="Auto, Auto, *, Auto, Auto" ColumnSpacing="10">
-
-            <!-- Tlačítko pro načtení souboru -->
             <Button Text="Načíst soubor" FontSize="18"
                     BackgroundColor="DodgerBlue"
                     TextColor="White"
                     Grid.Column="0"
                     Clicked="OnLoadFileClicked"/>
-
-            <!-- Vyhledávání podle teploty -->
             <SearchBar x:Name="TemperatureSearchBar"
                        Placeholder="Teplota [°C]"
                        Grid.Column="1"
@@ -39,8 +34,6 @@
                        SearchButtonPressed="OnTemperatureSearch"
                        TextChanged="OnTemperatureTextChanged"
                        IsEnabled="{Binding IsTemperatureEnabled}"/>
-
-            <!-- Vyhledávání podle frekvence -->
             <SearchBar x:Name="FrequencySearchBar"
                        Placeholder="Frekvence [Hz]"
                        Grid.Column="2"
@@ -50,11 +43,7 @@
                        SearchButtonPressed="OnFrequencySearch"
                        TextChanged="OnFrequencyTextChanged"
                        IsEnabled="{Binding IsFrequencyEnabled}"/>
-
-            <!-- Volné místo mezi vyhledáváním a tlačítkem "Help" -->
             <BoxView Grid.Column="3"/>
-
-            <!-- Tlačítko "Help" zobrazující návod k aplikaci -->
             <Button Text="Help" FontSize="18"
                     BackgroundColor="DarkOrange"
                     TextColor="White"
@@ -63,63 +52,65 @@
                     Clicked="OnHelpClicked"/>
         </Grid>
 
-        <!-- LEVÝ PANEL: ZOBRAZENÍ DAT A NÁHLEDU SOUBORU -->
+        <!-- LEVÝ PANEL (ZMIZÍ PŘI ZVĚTŠENÍ GRAFU) -->
         <Grid Grid.Row="1" Grid.Column="0"
+              IsVisible="{Binding IsAnyGraphExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter=visibility}"
               RowDefinitions="*,*"
               WidthRequest="300"
               Padding="5"
               BackgroundColor="Gainsboro"
               VerticalOptions="FillAndExpand"
               HorizontalOptions="Start">
-
-            <!-- Seznam načtených dat -->
             <VerticalStackLayout Grid.Row="0" BackgroundColor="White" Padding="10">
                 <Label Text="Data pro zobrazení" FontSize="16" FontAttributes="Bold" TextColor="Black"/>
                 <ListView x:Name="DataListView" ItemsSource="{Binding DataItems}"
                           BackgroundColor="White"/>
             </VerticalStackLayout>
-
-            <!-- Náhled souboru -->
             <VerticalStackLayout Grid.Row="1" BackgroundColor="LightSkyBlue" Padding="10">
                 <Label Text="Náhled souboru" FontSize="16" FontAttributes="Bold" TextColor="Black"/>
                 <Label x:Name="FilePreviewLabel" Text="Žádný soubor nenahrán" FontSize="14" TextColor="Black"/>
             </VerticalStackLayout>
         </Grid>
 
-        <!-- PRAVÁ HLAVNÍ OBLAST: SEZNAM GRAFŮ -->
+        <!-- HLAVNÍ OBLAST S GRAFY -->
         <ScrollView Grid.Row="1" Grid.Column="1" VerticalOptions="FillAndExpand"
                     HorizontalOptions="FillAndExpand" BackgroundColor="White">
             <VerticalStackLayout Spacing="20" HorizontalOptions="FillAndExpand">
-
-                <!-- Kolekce grafů -->
-                <CollectionView x:Name="GraphsCollectionView" ItemsSource="{Binding Graphs}">
+                <CollectionView x:Name="GraphsCollectionView"
+                ItemsSource="{Binding Graphs}">
                     <CollectionView.ItemsLayout>
-                        <GridItemsLayout Orientation="Vertical" Span="2"/>
+                        <GridItemsLayout Orientation="Vertical"
+                         Span="{Binding IsAnyGraphExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter=span}"
+                         HorizontalItemSpacing="5"
+                         VerticalItemSpacing="1"/>
                     </CollectionView.ItemsLayout>
                     <CollectionView.ItemTemplate>
                         <DataTemplate>
-                            <Border BackgroundColor="LightGray" Padding="10"
+                            <Border BackgroundColor="LightGray"
+                                    Padding="10"
                                     HorizontalOptions="FillAndExpand"
                                     VerticalOptions="FillAndExpand"
                                     HeightRequest="{Binding IsExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter=height}"
-                                    WidthRequest="{Binding IsExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter=width}">
+                                    WidthRequest="{Binding IsExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter=width}"
+                                    IsVisible="{Binding IsVisible}">
                                 <VerticalStackLayout>
                                     <Grid ColumnDefinitions="*, Auto, Auto">
-                                        <!-- Název grafu -->
                                         <Label Text="{Binding Name}" FontSize="18" FontAttributes="Bold" TextColor="Black" Grid.Column="0"/>
-                                        <!-- Tlačítko pro export grafu -->
-                                        <Button Text="Export" Clicked="OnExportGraphClicked"
-                                                BackgroundColor="Gray" TextColor="White"
-                                                HorizontalOptions="End" Grid.Column="1"/>
-                                        <!-- Tlačítko pro zvětšení/zmenšení grafu -->
+                                        <Button Text="Export"
+                                                Clicked="OnExportGraphClicked"
+                                                BackgroundColor="Gray"
+                                                TextColor="White"
+                                                HorizontalOptions="End"
+                                                Grid.Column="1"/>
                                         <Button Text="{Binding IsExpanded, Converter={StaticResource BoolToTextConverter}}"
                                                 Clicked="OnResizeGraphClicked"
-                                                BackgroundColor="DarkGray" TextColor="White"
-                                                HorizontalOptions="End" Grid.Column="2"/>
+                                                BackgroundColor="DarkGray"
+                                                TextColor="White"
+                                                HorizontalOptions="End"
+                                                Grid.Column="2"/>
                                     </Grid>
-                                    <!-- Místo pro vykreslení grafu -->
                                     <BoxView BackgroundColor="White"
-                                             HeightRequest="500"
+                                             HeightRequest="{Binding IsExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter=height}"
                                              HorizontalOptions="FillAndExpand"
                                              VerticalOptions="FillAndExpand"/>
                                 </VerticalStackLayout>
@@ -128,7 +119,8 @@
                     </CollectionView.ItemTemplate>
                 </CollectionView>
 
-                <!-- TLAČÍTKO PRO PŘIDÁNÍ NOVÉHO GRAFU -->
+
+                <!-- TLAČÍTKO PRO PŘIDÁNÍ GRAFU (ZMIZÍ PŘI ZVĚTŠENÍ) -->
                 <Button Text="+" FontSize="24"
                         WidthRequest="50" HeightRequest="50"
                         CornerRadius="25"
@@ -137,9 +129,9 @@
                         HorizontalOptions="Center"
                         VerticalOptions="End"
                         Margin="0,0,0,50"
+                        IsVisible="{Binding IsAnyGraphExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter=visibility}"
                         Clicked="OnAddGraphClicked"/>
             </VerticalStackLayout>
         </ScrollView>
-
     </Grid>
 </ContentPage>

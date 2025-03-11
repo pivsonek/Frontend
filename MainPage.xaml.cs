@@ -1,28 +1,46 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Microsoft.Maui.Controls;
+using System.Diagnostics;
 
 namespace project;
 
+/// <summary>
+/// Hlavní stránka aplikace, která obsahuje UI a logiku pro zpracování souborů a grafů.
+/// </summary>
 public partial class MainPage : ContentPage
 {
+    // Instance správce grafů, který se stará o jejich správu.
     private GraphManager _graphManager = new();
-    private FileHandler _fileHandler = new();
-    private GraphModel? _expandedGraph = null; // Uchovává aktuálně zvětšený graf
 
-    private ObservableCollection<GraphModel> _graphs;
-    public ObservableCollection<GraphModel> Graphs
+    // Instance správce souborů, který umožňuje načítání obsahu souborů.
+    private FileHandler _fileHandler = new();
+
+    // Kolekce grafů, která je propojena s UI a obsahuje seznam všech grafů.
+    public ObservableCollection<GraphModel> Graphs { get; set; }
+
+    // Interní proměnná pro sledování, zda je nějaký graf zvětšený.
+    private bool _isAnyGraphExpanded;
+
+    // Vlastnost pro indikaci, zda je některý graf zvětšený.
+    public bool IsAnyGraphExpanded
     {
-        get => _graphs;
+        get => _isAnyGraphExpanded;
         set
         {
-            _graphs = value;
-            OnPropertyChanged(nameof(Graphs));
+            if (_isAnyGraphExpanded != value)
+            {
+                _isAnyGraphExpanded = value;
+                OnPropertyChanged(nameof(IsAnyGraphExpanded)); // Notifikace změny
+            }
         }
     }
 
+    // Kolekce pro ukládání načtených dat z textového souboru.
     public ObservableCollection<string> DataItems { get; set; } = new();
 
+    // Proměnné pro řízení vstupu uživatele, kdy jeden vstup zamyká druhý.
     private bool _isFrequencyEnabled = true;
     private bool _isTemperatureEnabled = true;
 
@@ -46,55 +64,96 @@ public partial class MainPage : ContentPage
         }
     }
 
+    // Statická instance MainPage pro snadný přístup k této třídě z jiných tříd.
+    public static MainPage Instance { get; private set; }
+
+    /// <summary>
+    /// Konstruktor hlavní stránky aplikace.
+    /// </summary>
     public MainPage()
     {
-        InitializeComponent();
-        _graphs = _graphManager.Graphs;
-        BindingContext = this;
+        Instance = this; // Nastavení statické instance
+        InitializeComponent(); // Inicializace komponent UI
+        Graphs = _graphManager.Graphs; // Propojení kolekce grafů se správcem
+        BindingContext = this; // Nastavení BindingContext pro data binding
+
+        // Debug výpis pro kontrolu počtu grafů při spuštění aplikace.
+        Debug.WriteLine($"Počet grafů při spuštění: {Graphs.Count}");
     }
 
+    /// <summary>
+    /// Metoda pro načtení souboru po kliknutí na tlačítko.
+    /// </summary>
     private async void OnLoadFileClicked(object sender, EventArgs e)
     {
-        string? filePath = await _fileHandler.PickFileAsync();
+        string? filePath = await _fileHandler.PickFileAsync(); // Výběr souboru
         if (!string.IsNullOrEmpty(filePath))
         {
-            string? content = await _fileHandler.ReadFileContentAsync(filePath);
-            FilePreviewLabel.Text = $"Soubor: {filePath}\nObsah:\n{content}";
+            string? content = await _fileHandler.ReadFileContentAsync(filePath); // Načtení obsahu souboru
+            FilePreviewLabel.Text = $"Soubor: {filePath}\nObsah:\n{content}"; // Zobrazení obsahu
         }
     }
 
-
+    /// <summary>
+    /// Přidá nový graf do seznamu grafů.
+    /// </summary>
     private void OnAddGraphClicked(object sender, EventArgs e)
     {
-        _graphManager.AddGraph();
+        _graphManager.AddGraph(); // Přidání grafu
+        UpdateGraphVisibility(); // Aktualizace zobrazení grafů
     }
 
+    /// <summary>
+    /// Změní velikost vybraného grafu.
+    /// </summary>
     private void OnResizeGraphClicked(object sender, EventArgs e)
     {
         if (sender is Button button && button.BindingContext is GraphModel graph)
         {
-            // Pokud už je tento graf zvětšený, tak ho zmenšíme
+            // Pokud už je graf zvětšený, zmenšíme ho
             if (graph.IsExpanded)
             {
                 graph.IsExpanded = false;
-                return;
             }
-
-            // Jinak nejprve všechny ostatní grafy nastavíme na nezvětšené
-            foreach (var g in _graphs)
+            else
             {
-                g.IsExpanded = false;
+                // Nejprve všechny grafy zmenšíme
+                foreach (var g in Graphs)
+                {
+                    g.IsExpanded = false;
+                }
+                // A zvětšíme pouze vybraný graf
+                graph.IsExpanded = true;
             }
 
-            // A zvětšíme pouze vybraný graf
-            graph.IsExpanded = true;
+            UpdateGraphVisibility(); // Aktualizace UI
         }
     }
 
+    /// <summary>
+    /// Aktualizuje viditelnost grafů podle jejich stavu zvětšení.
+    /// </summary>
+    private void UpdateGraphVisibility()
+    {
+        IsAnyGraphExpanded = Graphs.Any(g => g.IsExpanded); // Kontrola, zda je nějaký graf zvětšený
+        Debug.WriteLine($"IsAnyGraphExpanded: {IsAnyGraphExpanded}");
 
+        foreach (var g in Graphs)
+        {
+            g.IsVisible = !IsAnyGraphExpanded || g.IsExpanded; // Nastavení viditelnosti podle stavu
+            Debug.WriteLine($"Graf: {g.Name}, IsVisible: {g.IsVisible}, IsExpanded: {g.IsExpanded}");
+        }
+
+        // Přinutíme UI překreslit CollectionView
+        OnPropertyChanged(nameof(IsAnyGraphExpanded));
+        OnPropertyChanged(nameof(Graphs));
+    }
+
+    /// <summary>
+    /// Exportuje vybraný graf.
+    /// </summary>
     private async void OnExportGraphClicked(object sender, EventArgs e)
     {
-        // TODO: Implementace exportu grafu
         if (sender is Button button && button.BindingContext is GraphModel graph)
         {
             await DisplayAlert("Export", $"Exportuji graf: {graph.Name}", "OK");
@@ -105,32 +164,43 @@ public partial class MainPage : ContentPage
         }
     }
 
+    /// <summary>
+    /// Zamyká zadávání frekvence, pokud uživatel zadal hodnotu teploty.
+    /// </summary>
     private void OnTemperatureTextChanged(object sender, TextChangedEventArgs e)
     {
         Console.WriteLine($"Teplota změněna: {e.NewTextValue}");
-
-        // Pokud uživatel zadá teplotu, zamkne se frekvence
-        IsFrequencyEnabled = string.IsNullOrWhiteSpace(e.NewTextValue);
+        IsFrequencyEnabled = string.IsNullOrWhiteSpace(e.NewTextValue); // Zamknutí frekvence
     }
 
+    /// <summary>
+    /// Zamyká zadávání teploty, pokud uživatel zadal hodnotu frekvence.
+    /// </summary>
     private void OnFrequencyTextChanged(object sender, TextChangedEventArgs e)
     {
         Console.WriteLine($"Frekvence změněna: {e.NewTextValue}");
-
-        // Pokud uživatel zadá frekvenci, zamkne se teplota
-        IsTemperatureEnabled = string.IsNullOrWhiteSpace(e.NewTextValue);
+        IsTemperatureEnabled = string.IsNullOrWhiteSpace(e.NewTextValue); // Zamknutí teploty
     }
 
+    /// <summary>
+    /// Simuluje hledání dat na základě zadané teploty.
+    /// </summary>
     private void OnTemperatureSearch(object sender, EventArgs e)
     {
         Console.WriteLine("Hledání teploty bylo spuštěno.");
     }
 
+    /// <summary>
+    /// Simuluje hledání dat na základě zadané frekvence.
+    /// </summary>
     private void OnFrequencySearch(object sender, EventArgs e)
     {
         Console.WriteLine("Hledání frekvence bylo spuštěno.");
     }
 
+    /// <summary>
+    /// Zobrazuje nápovědu k aplikaci.
+    /// </summary>
     private async void OnHelpClicked(object sender, EventArgs e)
     {
         await DisplayAlert("Nápověda",
@@ -142,5 +212,4 @@ public partial class MainPage : ContentPage
             "Pro další informace kontaktujte podporu.",
             "OK");
     }
-
 }
